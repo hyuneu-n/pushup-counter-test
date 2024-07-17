@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
-import * as mpPose from '@mediapipe/pose';
-import { Camera } from '@mediapipe/camera_utils';
-import calculateAngle from '../utils/calculateAngle';
+import React, { useEffect, useRef, useState } from 'react'
+import * as mpPose from '@mediapipe/pose'
+import { Camera } from '@mediapipe/camera_utils'
+import calculateAngle from '../utils/calculateAngle'
 
+//rafce
 const CameraFeed = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -32,7 +33,11 @@ const CameraFeed = () => {
     if (typeof videoRef.current !== 'undefined' && videoRef.current !== null) {
       const camera = new Camera(videoRef.current, {
         onFrame: async () => {
-          await pose.send({ image: videoRef.current });
+          frameInterval.current++;
+          //카메라 너무 뚝뚝 끊겨서 해상도 낮추고 프레임도 낮춤
+          if (frameInterval.current % 2 === 0) {
+            await pose.send({ image: videoRef.current });
+          }
         },
         width: 640,
         height: 480,
@@ -49,7 +54,7 @@ const CameraFeed = () => {
       );
 
       if (results.poseLandmarks) {
-        // Draw pose landmarks and connections
+        // 자세추정 점이랑 선분 그어주기
         drawLandmarks(canvasCtx, results.poseLandmarks, mpPose.POSE_CONNECTIONS);
 
         const leftShoulder = results.poseLandmarks[mpPose.POSE_LANDMARKS.LEFT_SHOULDER];
@@ -59,9 +64,12 @@ const CameraFeed = () => {
         const rightElbow = results.poseLandmarks[mpPose.POSE_LANDMARKS.RIGHT_ELBOW];
         const rightWrist = results.poseLandmarks[mpPose.POSE_LANDMARKS.RIGHT_WRIST];
 
+        //각도 계산해서 각 변수에 넣어주기
         const angleLeft = calculateAngle(leftShoulder, leftElbow, leftWrist);
         const angleRight = calculateAngle(rightShoulder, rightElbow, rightWrist);
 
+        // angleRight가 160보다 크면 팔이 완전히? 충분히? 펴진 상태로 간주/ stageRight를 Down으로 설정
+        // angleLeft도 같은 원리
         if (angleLeft > 160) setStageLeft('Down');
         if (angleLeft < 30 && stageLeft === 'Down') {
           setStageLeft('Up');
@@ -74,6 +82,7 @@ const CameraFeed = () => {
           setCounterRight(counterRight + 1);
         }
 
+        //전체 카운트 : 양쪽 팔이 모두 펴진 상태에서 모두 구부러진 상태로 변화할 때 카운더 증가
         if (angleLeft < 30 && angleRight < 30 && stage === 'Down') {
           setStage('Up');
           setCounter(counter + 1);
@@ -81,8 +90,8 @@ const CameraFeed = () => {
           setStage('Down');
         }
 
-        canvasCtx.font = '20px Arial';
-        canvasCtx.fillStyle = 'white';
+        canvasCtx.font = '30px Pretendard';
+        canvasCtx.fillStyle = 'red';
         canvasCtx.fillText(`Left Pushups: ${counterLeft}`, 10, 30);
         canvasCtx.fillText(`Right Pushups: ${counterRight}`, 10, 60);
         canvasCtx.fillText(`Total Pushups: ${counter}`, 10, 90);
